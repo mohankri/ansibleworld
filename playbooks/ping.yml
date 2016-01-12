@@ -1,11 +1,43 @@
 ---
 - hosts: ansible-client
   remote_user: ubuntu
+# sudo: yes
+  vars:
+    apache_conf_dir: files/dashboard
+    apache_dest_dir: /etc/apache2
 
   tasks:
     - name: test connection
       ping:
     - name: Hello World
       shell: date >> now.txt
-    - name: "git update ui"
-      git: repo=ssh://git@github.com/mohankri/dashboard dest=/home/ubuntu/dashboard
+    - name: send key to remote machine
+      copy: src=~/.ssh/id_rsa.github-dashboard dest=~/.ssh/id_rsa.github-dashboard mode=0600
+    - name: git update honeycomb-ui
+      git: repo=ssh://git@github.com/mohankri/dashboard dest=/home/mohankri/dashboard
+           accept_hostkey=yes
+#           key_file=~/.ssh/id_rsa.github-honeycomb-ui
+    - name: install apache2
+      apt: name=apache2 update_cache=yes state=latest 
+      sudo: yes
+    - name: copy apache ports.conf needed for dashboard
+      copy: src={{apache_conf_dir}}/ports.conf dest={{apache_dest_dir}}
+      sudo: yes
+      notify:
+         - restart apache2
+
+    - name: copy apache 000-default.conf  needed for dashboard
+      copy: src={{apache_conf_dir}}/000-default.conf dest={{apache_dest_dir}}/sites-available
+      sudo: yes
+      notify:
+         - restart apache2
+    - name: enable a2enmod proxy_http
+      raw: a2enmod proxy_http
+      sudo: yes
+      notify:
+         - restart apache2
+    
+  handlers:
+    - name: restart apache2
+      action: service name=apache2 state=restarted   
+  tasks:

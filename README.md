@@ -28,4 +28,12 @@ Add /etc/ansible/hosts
 Test
 ansible-playbook -i /etc/ansible/hosts playbooks/ping.yml
 
+To checkout private repo
+ssh-keygen -t rsa -b 4096 -C "name@github.com"
+cat ~/.ssh/id_rsa.pub
+
+# Add the key to your github account settings/SSH Keys
+
+
+
 '''
