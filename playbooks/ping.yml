@@ -7,3 +7,5 @@
       ping:
     - name: Hello World
       shell: date >> now.txt
+    - name: "git update ui"
+      git: repo=ssh://git@github.com/mohankri/dashboard dest=/home/ubuntu/dashboard
