@@ -1,0 +1,9 @@
+---
+- hosts: ansible-client
+  remote_user: ubuntu
+
+  tasks:
+    - name: test connection
+      ping:
+    - name: Hello World
+      shell: date >> now.txt
