@@ -1,0 +1,149 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: iscsi-target
+  remote_user: hcd
+#  sudo : yes
+  vars:
+    target_home_dir: /home/mohankri/iscsi
+
+  tasks:
+    - ping:
+
+    - name: Prepare for TargetCLI
+      shell: mkdir -p {{target_home_dir}}/target
+
+    - name: Prepare for tcmu-runner
+      shell: mkdir -p {{target_home_dir}}/tcmu-runner
+
+    - name: git clone targetcli-fb
+      git: repo=https://github.com/agrover/targetcli-fb dest={{target_home_dir}}/target/targetcli-fb
+
+    - name: git clone rtslib-fb 
+      git: repo=https://github.com/agrover/rtslib-fb dest={{target_home_dir}}/target/rtslib-fb
+
+    - name: git clone configshell-fb
+      git: repo=https://github.com/agrover/configshell-fb dest={{target_home_dir}}/target/configshell-fb
+
+    - name: compile & setup targetcli
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/target/targetcli-fb"
+      with_items: 
+         - python setup.py install
+
+    - name: compile & setup configshell-fb
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/target/configshell-fb"
+      with_items: 
+         - python setup.py install
+
+    - name: compile & setup rtslib-fb
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/target/rtslib-fb"
+      with_items: 
+         - python setup.py install
+
+    - name: python module install
+      sudo: yes
+      command: easy_install pyudev
+
+    - name: git clone tcmu-runner
+      git: repo=https://github.com/agrover/tcmu-runner dest={{target_home_dir}}/tcmu-runner
+
+    - name: Install cmake
+      sudo: yes
+      apt: name=cmake update_cache=yes state=latest
+
+    - name: 
+      sudo: yes
+      apt: name=libglib2.0-dev update_cache=yes state=latest
+
+    - name: 
+      sudo: yes
+      apt: name=libnl-3-dev update_cache=yes state=latest
+
+    - name: 
+      sudo: yes
+      apt: name=glusterfs* update_cache=yes state=latest
+
+    - name: 
+      sudo: yes
+      apt: name=libkmod-dev update_cache=yes state=latest
+
+    - name: 
+      sudo: yes
+      apt: name=libnl-genl-3-dev update_cache=yes state=latest
+
+    - name: compile tcmu-runner
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/tcmu-runner"
+      with_items: 
+         - cmake .
+
+    - name:
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/tcmu-runner"
+      with_items: 
+         - make 
+
+    - name: copy tcmu-runner.conf
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/tcmu-runner"
+      with_items: 
+         - cp tcmu-runner.conf /etc/dbus-1/system.d
+
+    - name: copy org.kernel.TCMUService1.service
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/tcmu-runner"
+      with_items: 
+         - cp org.kernel.TCMUService1.service /usr/share/dbus-1/system-services
+
+    - name: copy tcmu-runner.service
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{target_home_dir}}/tcmu-runner"
+      with_items: 
+         - cp tcmu-runner.service /lib/systemd/system
+
+    - name: Create HBA (user_1)
+      sudo: yes
+      command: "mkdir -p /sys/kernel/config/target/core/user_1/test"
+
+    - name: Set size 
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "/sys/kernel/config/target/core/user_1/test"
+      with_items: 
+         - echo -n dev_size=16777216 > control
+
+    - name: Install handler
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "/sys/kernel/config/target/core/user_1/test"
+      with_items: 
+         - echo -n dev_config=baz/addl_info_for_baz_handler > control
+
+    - name: Enable Storage Object
+      sudo: yes
+      shell: "{{ item }}"
+      args: 
+        chdir: "/sys/kernel/config/target/core/user_1/test"
+      with_items: 
+         - echo -n 1 > enable
+      ignore_errors: yes

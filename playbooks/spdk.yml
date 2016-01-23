@@ -1,0 +1,48 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: iscsi-target
+  remote_user: hcd
+#  sudo : yes
+  vars:
+    spdk_home_dir: /home/mohankri/spdk
+    dpdk_url: http://dpdk.org/browse/dpdk/snapshot/
+    dpdk_ver: dpdk-2.2.0.tar.gz
+    dpdk_dir: dpdk-2.2.0
+
+  tasks:
+    - ping:
+
+    - name: git clone spdk
+      git: repo=https://github.com/hdatas/spdk dest={{spdk_home_dir}}
+
+    - name: install libpciaccess-dev
+      sudo: yes
+      apt: name=libpciaccess-dev update_cache=yes state=latest
+
+    - name: install libcunit1-dev
+      sudo: yes
+      apt: name=libcunit1-dev update_cache=yes state=latest
+
+    - name: DPDK 2.2.0
+      get_url: url={{dpdk_url}}/{{dpdk_ver}} dest={{spdk_home_dir}}/{{dpdk_ver}}
+
+    - name: Unarchive DPDK 2.2.0
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{spdk_home_dir}}"
+      with_items: 
+         - tar xfz {{dpdk_ver}}
+
+    - name: Build DPDK
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{spdk_home_dir}}/{{dpdk_dir}}"
+      with_items: 
+         - make install T=x86_64-native-linuxapp-gcc
+
+    - name: Build SPDK
+      shell: "{{ item }}"
+      args: 
+        chdir: "{{spdk_home_dir}}"
+      with_items: 
+         - make DPDK_DIR=./{{dpdk_dir}}/x86_64-native-linuxapp-gcc
